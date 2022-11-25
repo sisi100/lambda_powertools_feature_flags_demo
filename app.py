@@ -3,10 +3,34 @@ import os
 
 import aws_cdk as cdk
 import aws_cdk.aws_appconfig as appconfig
+import aws_cdk.aws_iam as iam
 import aws_cdk.aws_lambda as _lambda
 
 app = cdk.App()
 stack = cdk.Stack(app, "lambda-powertools-feature-flags-demo-stack")
+
+features_config = {
+    # ルール付きの動的に変化するフラグだよ
+    "dynamic_hogehoge_flags": {
+        "default": False,
+        "rules": {
+            "hoge rule 1": {
+                "when_match": True,
+                "conditions": [
+                    {
+                        "action": "EQUALS",
+                        "key": "user_id",
+                        "value": "hoge",
+                    }
+                ],
+            }
+        },
+    },
+    # (参考)ルールのない静的なフラグ
+    "static_hogehoge_flag": {
+        "default": False,
+    },
+}
 
 # ==> AppConfig
 
@@ -25,24 +49,7 @@ config_profile = appconfig.CfnConfigurationProfile(
     name="features",
 )
 
-# プロファイルの設定値を追加
-# Lambda Powertool によって解釈される
-# https://awslabs.github.io/aws-lambda-powertools-python/1.20.0/utilities/feature_flags/#rules
-features_config = {
-    "dynamic_hogehoge_flags": {
-        "default": False,
-        "rules": {
-            "customer tier equals premium": {
-                "when_match": True,
-                "conditions": [{"action": "EQUALS", "key": "tier", "value": "premium"}],
-            }
-        },
-    },
-    # 静的なフラグ
-    "static_hogehoge_flag": {
-        "default": False,
-    },
-}
+# プロファイルに新しいバージョンを追加
 hosted_cfg_version = appconfig.CfnHostedConfigurationVersion(
     stack,
     "version",
@@ -70,7 +77,7 @@ powertools_layer = _lambda.LayerVersion.from_layer_version_arn(
     "lambda-powertools-layer",
     f"arn:aws:lambda:{os.getenv('CDK_DEFAULT_REGION')}:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:16",
 )
-_lambda.Function(
+function = _lambda.Function(
     stack,
     "function",
     runtime=_lambda.Runtime.PYTHON_3_9,
@@ -78,6 +85,18 @@ _lambda.Function(
     code=_lambda.Code.from_asset("runtime"),
     handler="hooks.pre_hook_handler",
     layers=[powertools_layer],
+    environment={
+        "APPLICATION_NAME": app_config.name,
+        "ENV_NAME": config_env.name,
+        "PROFILE_NAME": config_profile.name,
+    },
+)
+function.add_to_role_policy(
+    iam.PolicyStatement(
+        effect=iam.Effect.ALLOW,
+        actions=["appconfig:GetLatestConfiguration", "appconfig:StartConfigurationSession"],
+        resources=["*"],
+    )
 )
 
 app.synth()
