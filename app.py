@@ -11,29 +11,25 @@ stack = cdk.Stack(app, "lambda-powertools-feature-flags-demo-stack")
 # ==> AppConfig
 
 # AppConfigにアプリケーションを追加
-config_app = appconfig.CfnApplication(
-    stack,
-    "app",
-    name="product-catalogue",
-)
+app_config = appconfig.CfnApplication(stack, "app", name="demo-app")
+
 # AppConfigに環境を追加
-config_env = appconfig.CfnEnvironment(
-    stack,
-    "env",
-    application_id=config_app.ref,
-    name="dev-env",
-)
+config_env = appconfig.CfnEnvironment(stack, "env", application_id=app_config.ref, name="dev")
+
 # AppConfigにプロファイルを追加
 config_profile = appconfig.CfnConfigurationProfile(
     stack,
     "profile",
-    application_id=config_app.ref,
+    application_id=app_config.ref,
     location_uri="hosted",
     name="features",
 )
 
+# プロファイルの設定値を追加
+# Lambda Powertool によって解釈される
+# https://awslabs.github.io/aws-lambda-powertools-python/1.20.0/utilities/feature_flags/#rules
 features_config = {
-    "premium_features": {
+    "dynamic_hogehoge_flags": {
         "default": False,
         "rules": {
             "customer tier equals premium": {
@@ -42,24 +38,29 @@ features_config = {
             }
         },
     },
-    "ten_percent_off_campaign": {"default": True},
+    # 静的なフラグ
+    "static_hogehoge_flag": {
+        "default": False,
+    },
 }
 hosted_cfg_version = appconfig.CfnHostedConfigurationVersion(
     stack,
     "version",
-    application_id=config_app.ref,
+    application_id=app_config.ref,
     configuration_profile_id=config_profile.ref,
     content=json.dumps(features_config),
     content_type="application/json",
 )
+
+# デプロイ戦略を作成
 app_config_deployment = appconfig.CfnDeployment(
     stack,
     id="deploy",
-    application_id=config_app.ref,
+    application_id=app_config.ref,
     configuration_profile_id=config_profile.ref,
     configuration_version=hosted_cfg_version.ref,
-    deployment_strategy_id="AppConfig.AllAtOnce",
     environment_id=config_env.ref,
+    deployment_strategy_id="AppConfig.AllAtOnce",  # 即時一括反映
 )
 
 # ==> lambda
