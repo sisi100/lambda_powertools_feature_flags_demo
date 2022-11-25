@@ -3,3 +3,5 @@ constructs>=10.0.0,<11.0.0
 
 black==22.10.0
 isort==5.10.1
+
+aws-lambda-powertools==2.4.0
