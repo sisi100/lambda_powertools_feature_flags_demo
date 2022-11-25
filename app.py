@@ -2,9 +2,9 @@ import json
 import os
 
 import aws_cdk as cdk
-import aws_cdk.aws_appconfig as appconfig
-import aws_cdk.aws_iam as iam
-import aws_cdk.aws_lambda as _lambda
+from aws_cdk import aws_appconfig as appconfig
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_lambda as _lambda
 
 app = cdk.App()
 stack = cdk.Stack(app, "lambda-powertools-feature-flags-demo-stack")
@@ -83,7 +83,7 @@ function = _lambda.Function(
     runtime=_lambda.Runtime.PYTHON_3_9,
     architecture=_lambda.Architecture.ARM_64,
     code=_lambda.Code.from_asset("runtime"),
-    handler="hooks.pre_hook_handler",
+    handler="index.handler",
     layers=[powertools_layer],
     environment={
         "APPLICATION_NAME": app_config.name,
